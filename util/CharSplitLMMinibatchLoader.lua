@@ -1,4 +1,3 @@
-
 -- Modified from https://github.com/oxford-cs-ml-2015/practical6
 -- the modification included support for train/val/test splits
 
@@ -127,24 +126,16 @@ function CharSplitLMMinibatchLoader.text_to_tensor(in_textfile, out_vocabfile, o
     local timer = torch.Timer()
 
     print('loading text file...')
-    local cache_len = 10000
-    local rawdata
-    local tot_len = 0
-    local f = assert(io.open(in_textfile, "r"))
+    local text = utf8:read(in_textfile)
+    local tot_len = #text
 
     -- create vocabulary if it doesn't exist yet
     print('creating vocabulary mapping...')
     -- record all characters to a set
     local unordered = {}
-    rawdata = f:read(cache_len)
-    repeat
-        for char in rawdata:gmatch'.' do
-            if not unordered[char] then unordered[char] = true end
-        end
-        tot_len = tot_len + #rawdata
-        rawdata = f:read(cache_len)
-    until not rawdata
-    f:close()
+    for _, char in pairs(text) do
+        if not unordered[char] then unordered[char] = true end
+    end
     -- sort into a table (i.e. keys become 1..N)
     local ordered = {}
     for char in pairs(unordered) do ordered[#ordered + 1] = char end
@@ -156,18 +147,10 @@ function CharSplitLMMinibatchLoader.text_to_tensor(in_textfile, out_vocabfile, o
     end
     -- construct a tensor with all the data
     print('putting data into tensor...')
-    local data = torch.ByteTensor(tot_len) -- store it into 1D first, then rearrange
-    f = assert(io.open(in_textfile, "r"))
-    local currlen = 0
-    rawdata = f:read(cache_len)
-    repeat
-        for i=1, #rawdata do
-            data[currlen+i] = vocab_mapping[rawdata:sub(i, i)] -- lua has no string indexing using []
-        end
-        currlen = currlen + #rawdata
-        rawdata = f:read(cache_len)
-    until not rawdata
-    f:close()
+    local data = torch.IntTensor(tot_len) -- store it into 1D first, then rearrange
+    for i, char in pairs(text) do
+        data[i] = vocab_mapping[char] 
+    end
 
     -- save output preprocessed files
     print('saving ' .. out_vocabfile)
